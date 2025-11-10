@@ -1,6 +1,8 @@
+import { generateToken } from "../config/generateToken.js";
 import { publishToQueue } from "../config/Rabbitmq.js";
 import TryCatch from "../config/TryCatch.js";
 import { redisClient } from "../index.js";
+import type { AuthenticatedRequest } from "../middleware/isAuth.js";
 import { User } from "../model/User.js";
 
 export const LoginUser = TryCatch(async (req, res) => {
@@ -24,7 +26,7 @@ export const LoginUser = TryCatch(async (req, res) => {
   await redisClient.set(rateLimitKey, "1", { EX: 60 });
 
   const message = {
-    to: email,
+    to: "anmolsainiii23@gmail.com",
     subject: "Your OTP Code",
     body: `<h1>Your OTP Code is ${OTP}</h1><p>This code is valid for 5 minutes.</p>`,
   };
@@ -34,26 +36,90 @@ export const LoginUser = TryCatch(async (req, res) => {
   res.status(200).json({ message: "OTP sent to your email" });
 });
 
+
+
 export const VerifyUser = TryCatch(async (req, res) => {
   const { email, OTP } = req.body;
+  console.log(email, OTP);
+
   if (!email || !OTP) {
-    res.status(400).json({ message: "Email and OTP are required" });
-    return;
+    return res.status(400).json({ message: "Email and OTP are required" });
   }
+
   const otpKey = `otp:${email}`;
   const storedOTP = await redisClient.get(otpKey);
 
-  if (storedOTP === OTP) {
-    await redisClient.del(otpKey);
-    res.status(200).json({ message: "User verified successfully" });
-    console.log("User with email", email, "verified successfully");
-
-    let user = User.findOne({ email: email });
-    if (!user) {
-    } else {
-    }
-  } else {
-    res.status(400).json({ message: "Invalid OTP" });
+  if (storedOTP !== OTP) {
     console.log("Invalid OTP attempt for email", email);
+    return res.status(400).json({ message: "Invalid OTP" });
   }
+
+  await redisClient.del(otpKey);
+  console.log("User with email", email, "verified successfully");
+
+  let user = await User.findOne({ email }); 
+  console.log(user)
+
+  if (!user) {
+    const name = email.split("@")[0];
+    user = await User.create({ name, email }); 
+    console.log("New user created with email", email);
+  }
+
+  const token = generateToken({name:user.name, email: user.email }); 
+  console.log("Generated JWT token for", email,token);
+
+  res.status(200).json({
+    message: "User verified successfully",
+    token,
+  });
 });
+
+
+
+
+export const myProfile = TryCatch(async (req: AuthenticatedRequest, res) => {
+   const User = req.user;
+   res.status(200).json({ user: User , message: "User profile fetched successfully" });
+});
+
+export const updateName = TryCatch(async (req: AuthenticatedRequest, res) => {
+  const user = req.user;
+  const { name } = req.body;  
+
+  if (!name) {
+    return res.status(400).json({ message: "Name is required" });
+  }   
+
+  const updatedUser = await User.findById( user?._id );
+  if(!updatedUser){
+     return res.status(404).json({ message: "User not found" });
+  }
+
+  updatedUser.name = name;
+  await updatedUser.save();
+
+  const newToken = generateToken({name:updatedUser.name, email: updatedUser.email });
+  res.status(200).json({ message: "Name updated successfully",user:updatedUser ,newToken});
+});
+
+
+
+export const getAllUsers = TryCatch(async (req: AuthenticatedRequest, res) => {
+  const users = await User.find({});
+  res.status(200).json({ users, message: "All users fetched successfully" });
+});
+
+
+
+export const getUsersbyIds = TryCatch(async (req: AuthenticatedRequest, res) => {
+  const ids  = req.params.id;;
+
+  if(!ids){
+      return res.status(400).json({ message: "User IDs are required" });
+  }
+
+  const users = await User.find({ _id: { $in: ids } });
+  res.status(200).json({ users, message: "Users fetched successfully" }); 
+
+}) 
