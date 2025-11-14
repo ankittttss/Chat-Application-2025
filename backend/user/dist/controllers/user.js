@@ -1,3 +1,4 @@
+import { json } from "express";
 import { generateToken } from "../config/generateToken.js";
 import { publishToQueue } from "../config/Rabbitmq.js";
 import TryCatch from "../config/TryCatch.js";
@@ -61,23 +62,20 @@ export const myProfile = TryCatch(async (req, res) => {
     res.status(200).json({ user: User, message: "User profile fetched successfully" });
 });
 export const updateName = TryCatch(async (req, res) => {
-    const user = req.user;
-    const { name } = req.body;
-    if (!name) {
-        return res.status(400).json({ message: "Name is required" });
-    }
-    const updatedUser = await User.findById(user?._id);
-    if (!updatedUser) {
+    const user = await User.findById(req.user?.id);
+    console.log(user);
+    if (!user) {
         return res.status(404).json({ message: "User not found" });
     }
-    updatedUser.name = name;
-    await updatedUser.save();
-    const newToken = generateToken({ name: updatedUser.name, email: updatedUser.email });
-    res.status(200).json({ message: "Name updated successfully", user: updatedUser, newToken });
+    const { name } = req.body;
+    user.name = name || user.name;
+    const updatedUser = await user.save();
+    generateToken({ name: updatedUser.name, email: updatedUser.email });
+    res.status(200).json({ user: updatedUser, message: "User name updated successfully" });
 });
 export const getAllUsers = TryCatch(async (req, res) => {
-    const users = await User.find({});
-    res.status(200).json({ users, message: "All users fetched successfully" });
+    const users = await User.find();
+    res.status(200).json(users);
 });
 export const getUsersbyIds = TryCatch(async (req, res) => {
     const ids = req.params.id;

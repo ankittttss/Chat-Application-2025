@@ -1,16 +1,11 @@
 import jwt, {} from "jsonwebtoken";
 export const isAuth = async (req, res, next) => {
     const authHeader = req.headers["authorization"];
-    console.log("Authorization Header:", authHeader);
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        res.status(401).json({ message: "Unauthorized" });
+        res.status(401).json({ message: "Unauthorized - No token provided" });
         return;
     }
     const token = authHeader.split(" ")[1];
-    if (!token) {
-        res.status(401).json({ message: "Unauthorized" });
-        return;
-    }
     const secret = process.env.JWT_SECRET;
     if (!secret) {
         res.status(500).json({ message: "JWT secret not configured" });
@@ -18,17 +13,18 @@ export const isAuth = async (req, res, next) => {
     }
     try {
         const decoded = jwt.verify(token, secret);
-        if (!decoded || !decoded.user) {
-            res.status(401).json({ message: "Invalid Token" });
+        if (!decoded || !decoded.email) {
+            res.status(401).json({ message: "Invalid token payload" });
             return;
         }
-        req.user = decoded.user;
+        req.user = {
+            name: decoded.name,
+            email: decoded.email,
+        };
         next();
     }
     catch (err) {
-        res.status(401).json({ message: "Invalid Token"
-        });
-        return;
+        res.status(401).json({ message: "Invalid or expired token" });
     }
 };
 //# sourceMappingURL=isAuth.js.map

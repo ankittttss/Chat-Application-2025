@@ -1,1 +1,1 @@
-{"version":3,"file":"generateToken.d.ts","sourceRoot":"","sources":["../../src/config/generateToken.ts"],"names":[],"mappings":"AAWA,MAAM,WAAW,WAAW;IAC1B,IAAI,EAAE,MAAM,CAAC;IACb,KAAK,EAAE,MAAM,CAAC;CACf;AAED,eAAO,MAAM,aAAa,GAAI,MAAK,WAAW,KAAG,MAOhD,CAAC"}
+{"version":3,"file":"generateToken.d.ts","sourceRoot":"","sources":["../../src/config/generateToken.ts"],"names":[],"mappings":"AAWA,MAAM,WAAW,WAAW;IAC1B,EAAE,EAAC,MAAM,CAAC;IACV,IAAI,EAAE,MAAM,CAAC;IACb,KAAK,EAAE,MAAM,CAAC;CACf;AAED,eAAO,MAAM,aAAa,GAAI,MAAK,WAAW,KAAG,MAOhD,CAAC"}

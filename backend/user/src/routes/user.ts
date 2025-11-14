@@ -7,7 +7,7 @@ router.post('/login',LoginUser);
 router.post('/verify',VerifyUser);
 router.get('/myProfile',isAuth,myProfile);
 router.get('/user/getAll',isAuth,getAllUsers);
-router.get('/user/:id',isAuth,getUsersbyIds);
-router.patch('/user/updateUser',isAuth,updateName)
+router.get('/user/:id',getUsersbyIds);
+router.post('/user/updateUser',isAuth,updateName)
 
 export default router;
