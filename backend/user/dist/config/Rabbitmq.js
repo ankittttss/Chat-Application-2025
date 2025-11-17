@@ -12,7 +12,6 @@ export const connectToRabbitMQ = async () => {
             password: process.env.RABBITMQ_PASSWORD,
         });
         channel = await connection.createChannel();
-        console.log("Connected to RabbitMQ");
     }
     catch (err) {
         console.error("Error connecting to RabbitMQ:", err);
@@ -26,6 +25,5 @@ export const publishToQueue = async (queueName, message) => {
     channel.sendToQueue(queueName, Buffer.from(message), {
         persistent: true
     });
-    console.log(`Message sent to queue ${queueName}: ${message}`);
 };
 //# sourceMappingURL=Rabbitmq.js.map

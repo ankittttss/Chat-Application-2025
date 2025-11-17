@@ -20,6 +20,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/api/v1", userRoutes);
 app.listen(process.env.PORT || 3000, () => {
-    console.log("🚀 Listening on port 3000");
+    console.log("Listening on port 3000");
 });
 //# sourceMappingURL=index.js.map

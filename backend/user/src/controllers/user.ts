@@ -11,13 +11,10 @@ export const LoginUser = TryCatch(async (req, res) => {
   const rateLimitKey = `otp:ratelimit:${email}`;
   const ratelimit = await redisClient.get(rateLimitKey);
 
-  console.log("Rate limit value for", email, "is", ratelimit);
-
   if (ratelimit) {
     res
       .status(429)
       .json({ message: "Too many requests. Please try again later." });
-    console.log("Rate limit exceeded for", email);
     return;
   }
 
@@ -26,55 +23,116 @@ export const LoginUser = TryCatch(async (req, res) => {
   await redisClient.set(otpKey, OTP, { EX: 300 });
   await redisClient.set(rateLimitKey, "1", { EX: 60 });
 
-  const message = {
-    to: "anmolsainiii23@gmail.com",
-    subject: "Your OTP Code",
-    body: `<h1>Your OTP Code is ${OTP}</h1><p>This code is valid for 5 minutes.</p>`,
-  };
-  await publishToQueue("send-otp", JSON.stringify(message));
-  console.log(`OTP ${OTP} sent to email ${email}`);
+ const message = {
+  to: email,
+  subject: "Your OTP Code",
+  body: `
+    <div style="
+      max-width: 500px;
+      margin: auto;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      font-family: Arial, sans-serif;
+      border: 1px solid #e6e6e6;
+    ">
+      <div style="text-align: center; padding-bottom: 20px;">
+        <h2 style="color: #4A90E2; margin: 0;">🔐 Verification Code</h2>
+      </div>
 
+      <p style="font-size: 16px; color: #333;">
+        Hi there,  
+        <br><br>
+        Use the following One-Time Password (OTP) to complete your verification:
+      </p>
+
+      <div style="
+        text-align: center;
+        margin: 20px 0;
+        padding: 15px;
+        background: #f4f8ff;
+        border-radius: 8px;
+        border: 1px solid #d6e4ff;
+      ">
+        <span style="
+          font-size: 32px;
+          letter-spacing: 5px;
+          font-weight: bold;
+          color: #4A90E2;
+        ">
+          ${OTP}
+        </span>
+      </div>
+
+      <p style="font-size: 15px; color: #444;">
+        ✔ This OTP is valid for <strong>5 minutes</strong>.  
+        <br>
+        ✔ Do not share this code with anyone.
+      </p>
+
+      <hr style="border: none; border-top: 1px solid #eee; margin: 25px 0;">
+
+      <p style="font-size: 12px; color: #888; text-align: center;">
+        If you did not request this code, please ignore this email.
+      </p>
+    </div>
+  `,
+};
+
+  await publishToQueue("send-otp", JSON.stringify(message));
   res.status(200).json({ message: "OTP sent to your email" });
 });
 
 
 
 export const VerifyUser = TryCatch(async (req, res) => {
-  const { email, OTP } = req.body;
-  console.log(email, OTP);
+  try {
+    const { email, OTP } = req.body;
 
-  if (!email || !OTP) {
-    return res.status(400).json({ message: "Email and OTP are required" });
+    console.log(email,OTP);
+
+    if (!email || !OTP) {
+      return res.status(400).json({ message: "Email and OTP are required" });
+    }
+
+    const otpKey = `otp:${email}`;
+    const storedOTP = await redisClient.get(otpKey);
+
+    console.log(storedOTP);
+
+    if (storedOTP !== OTP) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    await redisClient.del(otpKey);
+
+  
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      const name = email.split("@")[0];
+      user = await User.create({ name, email });
+    }
+
+    
+    const token = generateToken({
+      _id: user._id as string,
+      name: user.name,
+      email: user.email,
+    });
+
+    return res.status(200).json({
+      message: "User verified successfully",
+      token,
+    });
+  } catch (error) {
+    console.error("VerifyUser Error:", error);
+    return res.status(500).json({
+      message: "Internal Server Error",
+    });
   }
-
-  const otpKey = `otp:${email}`;
-  const storedOTP = await redisClient.get(otpKey);
-
-  if (storedOTP !== OTP) {
-    console.log("Invalid OTP attempt for email", email);
-    return res.status(400).json({ message: "Invalid OTP" });
-  }
-
-  await redisClient.del(otpKey);
-  console.log("User with email", email, "verified successfully");
-
-  let user = await User.findOne({ email }); 
-  console.log(user)
-
-  if (!user) {
-    const name = email.split("@")[0];
-    user = await User.create({ name, email }); 
-    console.log("New user created with email", email);
-  }
-
-  const token = generateToken({name:user.name, email: user.email }); 
-  console.log("Generated JWT token for", email,token);
-
-  res.status(200).json({
-    message: "User verified successfully",
-    token,
-  });
 });
+
 
 
 
@@ -88,7 +146,6 @@ export const myProfile = TryCatch(async (req: AuthenticatedRequest, res) => {
 
 export const updateName = TryCatch(async (req: AuthenticatedRequest, res) => {
    const user = await User.findById(req.user?.id);
-   console.log(user);
 
    if(!user){
     return res.status(404).json({ message: "User not found" });
@@ -98,7 +155,7 @@ export const updateName = TryCatch(async (req: AuthenticatedRequest, res) => {
     user.name = name || user.name;
     const updatedUser = await user.save();
 
-    generateToken({ name: updatedUser.name, email: updatedUser.email});
+    generateToken({ _id:updatedUser._id as string ,name: updatedUser.name, email: updatedUser.email});
     res.status(200).json({ user: updatedUser , message: "User name updated successfully" });
 
 });

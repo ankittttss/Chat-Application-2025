@@ -10,14 +10,14 @@ if (!JWT_SECRET) {
 }
 
 export interface UserPayload {
-  id:string,
+  _id:string;
   name: string;
   email: string;
 }
 
 export const generateToken = (user:UserPayload): string => {
   const token = Jwt.sign(
-    { id:user.id, name: user.name, email: user.email },
+    {_id:user._id,name: user.name, email: user.email },
     JWT_SECRET,
     { expiresIn: "1h" } 
   );
